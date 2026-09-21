@@ -740,6 +740,23 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CalculateCartResponse' }
+  /ConfirmOrderedCart:
+    post:
+      tags: [Bestellungen]
+      summary: Bestellten Warenkorb bestaetigen oder ablehnen
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmOrderedCartRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfirmOrderedCartResponse' }
 components:
   parameters:
     Offset:
@@ -967,6 +984,21 @@ components:
         ItemCount: { type: integer }
         Message: { type: string }
         Success: { type: boolean }
+    ConfirmOrderedCartRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
+        Choice: { type: boolean }
+        CartId: { type: string }
+        Message: { type: string }
+    ConfirmOrderedCartResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
     OrderItemRequest:
       type: object
       properties:
