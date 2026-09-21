@@ -2,15 +2,23 @@ openapi: 3.0.3
 info:
   title: SPIRAL EasyOrder 4.0 App - CENTAURI Baseshop API
   version: "5.74"
-  description: API Dokumentation für die SPIRAL EasyOrder 4.0 App.
+  description: |
+    API Dokumentation für die SPIRAL EasyOrder 4.0 App.
+
+    **Authentifizierung:** Es gibt kein klassisches Auth-Schema. Die meisten Endpunkte
+    erwarten `Username` und `Password` im Request-Body (bei GET-Endpunkten als Query-Parameter).
+
+    Der Token aus `/AutoConfig` bzw. `/Login` wird nicht als Header-Auth verwendet, sondern
+    als Wert im Feld `Password` übertragen. Der Server versucht zuerst den Passwort-Login und
+    validiert `Password` danach als Token.
+
+    Optional wird ein `Authorization`-Header ausgewertet: Ist er gesetzt, wird sein Wert als
+    Token validiert und `Password` ignoriert. `Username` ist dann trotzdem Pflicht.
 servers:
   - url: https://{host}/API
     variables:
       host:
         default: shop.spiral.at
-security:
-  - tokenAuth: []
-  - {}
 tags:
   - name: Auth
   - name: Produkte
@@ -23,7 +31,7 @@ paths:
   /Login:
     post:
       tags: [Auth]
-      summary: Anmeldung und Token-Erzeugung
+      summary: Anmeldung und Token-Erzeugung (Password darf auch ein Token sein)
       requestBody:
         required: true
         content:
@@ -77,6 +85,8 @@ paths:
     post:
       tags: [Produkte]
       summary: Artikeldetails mit Anmeldung
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -93,6 +103,7 @@ paths:
       tags: [Produkte]
       summary: Alle Artikel (paginiert, taeglich gecacht je Kunde)
       parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
         - $ref: '#/components/parameters/Offset'
         - $ref: '#/components/parameters/Count'
       requestBody:
@@ -110,6 +121,7 @@ paths:
       tags: [Produkte]
       summary: Artikelsuche (mode 0) oder Scan per Artikelnummer/EAN (mode 1)
       parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
         - name: suchtext
           in: query
           required: true
@@ -134,6 +146,7 @@ paths:
       tags: [Produkte]
       summary: Bereits bestellte Artikel des Kunden
       parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
         - name: suchbegriff
           in: query
           schema: { type: string, default: '' }
@@ -152,6 +165,7 @@ paths:
       tags: [Produkte]
       summary: Artikel einer Kategorie
       parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
         - name: id
           in: query
           description: Kategorie-Id, 0 = oberste Kategorie
@@ -184,6 +198,8 @@ paths:
     post:
       tags: [Bestellungen]
       summary: Bestellung aus uebergebenen Positionen erstellen
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -199,6 +215,8 @@ paths:
     post:
       tags: [Warenkorb]
       summary: Positionen in den Warenkorb legen (Vorbestellung)
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -215,11 +233,13 @@ paths:
       tags: [Bestellungen]
       summary: Versandarten des Kunden
       parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
         - name: Username
           in: query
           schema: { type: string }
         - name: Password
           in: query
+          description: Passwort oder Token
           schema: { type: string }
       responses:
         '200':
@@ -245,11 +265,13 @@ paths:
       tags: [Bestellungen]
       summary: Zahlungsarten des Kunden
       parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
         - name: Username
           in: query
           schema: { type: string }
         - name: Password
           in: query
+          description: Passwort oder Token
           schema: { type: string }
       responses:
         '200':
@@ -275,7 +297,6 @@ paths:
     post:
       tags: [Sonstiges]
       summary: Liste der Laender
-      security: []
       responses:
         '200':
           description: OK (Anonymous Type im Code)
@@ -296,6 +317,8 @@ paths:
     post:
       tags: [Kunde]
       summary: Einstellungen des Kunden lesen
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -311,6 +334,8 @@ paths:
     post:
       tags: [Kunde]
       summary: Einstellungen des Kunden setzen
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -325,8 +350,7 @@ paths:
   /AutoConfig:
     post:
       tags: [Auth]
-      summary: Automatische App-Konfiguration per Guid
-      security: []
+      summary: Automatische App-Konfiguration per Guid (liefert Username und Token)
       parameters:
         - name: id
           in: query
@@ -342,6 +366,8 @@ paths:
     post:
       tags: [Kunde]
       summary: Anfrage erstellen
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -353,25 +379,12 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/InquiryResponse' }
-  /InquiryPhoto:
-    post:
-      tags: [Kunde]
-      summary: Foto zu Anfrage (Platzhalter, TODO im Code)
-      security: []
-      parameters:
-        - name: id
-          in: query
-          schema: { type: string, default: '' }
-      responses:
-        '200':
-          description: Text OK
-          content:
-            text/plain:
-              schema: { type: string, example: OK }
   /MakeContact:
     post:
       tags: [Kunde]
       summary: Rueckrufwunsch/Kontaktanfrage
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -387,6 +400,8 @@ paths:
     post:
       tags: [Kunde]
       summary: Merkliste des Kunden
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -402,6 +417,8 @@ paths:
     post:
       tags: [Warenkorb]
       summary: Gespeicherte Musterwarenkoerbe
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -417,6 +434,8 @@ paths:
     post:
       tags: [Kunde]
       summary: Kundenlager abfragen
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -432,6 +451,8 @@ paths:
     post:
       tags: [Bestellungen]
       summary: Kundenlager nachbestellen (noch nicht implementiert - TODO im Code)
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -447,6 +468,8 @@ paths:
     post:
       tags: [Bestellungen]
       summary: Bestellhistorie (Firmenadmin sieht alle Bestellungen der Firma)
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -462,6 +485,8 @@ paths:
     post:
       tags: [Kunde]
       summary: Push-Token registrieren
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -477,6 +502,8 @@ paths:
     post:
       tags: [Kunde]
       summary: Push-Token entfernen
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -492,6 +519,8 @@ paths:
     post:
       tags: [Warenkorb]
       summary: Position im offenen Warenkorb hinzufuegen, aendern oder loeschen (Loeschen = Count 0)
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -507,6 +536,8 @@ paths:
     post:
       tags: [Warenkorb]
       summary: Aktuellen offenen Warenkorb abrufen und validieren
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -522,6 +553,8 @@ paths:
     post:
       tags: [Bestellungen]
       summary: Offenen Warenkorb bestellen
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -537,6 +570,8 @@ paths:
     post:
       tags: [Warenkorb]
       summary: Redirect-URL zum offenen Warenkorb liefern
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -552,6 +587,8 @@ paths:
     post:
       tags: [Kunde]
       summary: Lieferadressen des Kunden (erste ist Standardadresse mit Id 0)
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         content:
           application/json:
@@ -568,6 +605,8 @@ paths:
     post:
       tags: [Nachrichten]
       summary: Anhang hochladen (jpg, png, gif, pdf)
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -604,6 +643,7 @@ paths:
       tags: [Nachrichten]
       summary: Nachricht senden
       parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
         - name: from
           in: query
           required: true
@@ -655,6 +695,8 @@ paths:
     post:
       tags: [Bestellungen]
       summary: Checkout validieren (Kostenstelle, Bestellreferenz, Verfuegbarkeit)
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -670,6 +712,8 @@ paths:
     post:
       tags: [Warenkorb]
       summary: Warenkorbwerte berechnen
+      parameters:
+        - $ref: '#/components/parameters/OptionalAuthToken'
       requestBody:
         required: true
         content:
@@ -682,11 +726,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CalculateCartResponse' }
 components:
-  securitySchemes:
-    tokenAuth:
-      type: apiKey
-      in: header
-      name: Authorization
   parameters:
     Offset:
       name: offset
@@ -696,6 +735,12 @@ components:
       name: count
       in: query
       schema: { type: integer, default: 2147483647 }
+    OptionalAuthToken:
+      name: Authorization
+      in: header
+      required: false
+      description: Optional. App-Token als Alternative zum Passwort. Username bleibt Pflicht im Body.
+      schema: { type: string }
   schemas:
     ColorSizeTypes:
       type: integer
@@ -713,7 +758,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token aus /Login bzw. /AutoConfig
     ButtonResponse:
       type: object
       properties:
@@ -743,7 +790,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
         Id: { type: string }
     ProductVariationResponse:
       type: object
@@ -926,7 +975,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
         Items:
           type: array
           items: { $ref: '#/components/schemas/OrderItemRequest' }
@@ -946,7 +997,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
         Netto: { type: boolean }
     SettingsResponse:
       type: object
@@ -961,7 +1014,9 @@ components:
         Message: { type: string }
         BaseUrl: { type: string }
         Username: { type: string }
-        Token: { type: string }
+        Token:
+          type: string
+          description: Wird in den Folge-Requests als Password uebertragen
     InquiryItem:
       type: object
       properties:
@@ -971,7 +1026,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
         customernr: { type: string }
         Note: { type: string }
         Firma: { type: string }
@@ -997,7 +1054,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
     ContactResponse:
       type: object
       properties:
@@ -1037,7 +1096,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
     BookmarksResponse:
       type: object
       properties:
@@ -1089,7 +1150,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
     SampleCartResponse:
       type: object
       properties:
@@ -1108,7 +1171,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
     InventoryResponse:
       type: object
       properties:
@@ -1122,7 +1187,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
         Id: { type: string }
     CustomerStockResponse:
       type: object
@@ -1192,7 +1259,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
     OrdersResponse:
       type: object
       properties:
@@ -1205,8 +1274,12 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
-        Token: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
+        Token:
+          type: string
+          description: Push-Token des Geraets
         DeviceModel: { type: string }
     RegisterResponse:
       type: object
@@ -1217,7 +1290,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
         PositionId: { type: integer, default: -1 }
         Count: { type: integer }
         Stockno: { type: string }
@@ -1280,7 +1355,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
         Items:
           type: array
           items:
@@ -1314,7 +1391,9 @@ components:
       type: object
       properties:
         Username: { type: string }
-        Password: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
         DeliveryId: { type: integer, nullable: true }
         Items:
           type: array
