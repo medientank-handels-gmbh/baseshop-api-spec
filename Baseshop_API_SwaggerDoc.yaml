@@ -379,6 +379,21 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/InquiryResponse' }
+  /InquiryPhoto:
+    post:
+      tags: [Kunde]
+      summary: Foto zur passenden Anfrage-Id
+      security: []
+      parameters:
+        - name: id
+          in: query
+          schema: { type: string, default: '' }
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema: { type: string, example: OK }
   /MakeContact:
     post:
       tags: [Kunde]
