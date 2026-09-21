@@ -1,0 +1,1336 @@
+openapi: 3.0.3
+info:
+  title: SPIRAL EasyOrder 4.0 App - CENTAURI Baseshop API
+  version: "5.74"
+  description: API Dokumentation für die SPIRAL EasyOrder 4.0 App.
+servers:
+  - url: https://{host}/API
+    variables:
+      host:
+        default: shop.spiral.at
+security:
+  - tokenAuth: []
+  - {}
+tags:
+  - name: Auth
+  - name: Produkte
+  - name: Warenkorb
+  - name: Bestellungen
+  - name: Kunde
+  - name: Nachrichten
+  - name: Sonstiges
+paths:
+  /Login:
+    post:
+      tags: [Auth]
+      summary: Anmeldung und Token-Erzeugung
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+  /GetProductStock:
+    get:
+      tags: [Produkte]
+      summary: Lagerbestand mehrerer Artikel
+      parameters:
+        - name: items
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            uniqueItems: true
+            items: { type: string }
+      responses:
+        '200':
+          description: Artikelnummer zu Lagermenge
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: integer }
+  /ProduktDetailLangtextApp:
+    get:
+      tags: [Produkte]
+      summary: Langtext eines Artikels als HTML
+      parameters:
+        - name: itemnr
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: HTML Partial
+          content:
+            text/html:
+              schema: { type: string }
+        '404':
+          description: Artikel nicht gefunden
+  /Product:
+    post:
+      tags: [Produkte]
+      summary: Artikeldetails mit Anmeldung
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExtendedProductResponse' }
+  /Products:
+    post:
+      tags: [Produkte]
+      summary: Alle Artikel (paginiert, taeglich gecacht je Kunde)
+      parameters:
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Count'
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductsResponse' }
+  /SearchProducts:
+    post:
+      tags: [Produkte]
+      summary: Artikelsuche (mode 0) oder Scan per Artikelnummer/EAN (mode 1)
+      parameters:
+        - name: suchtext
+          in: query
+          required: true
+          schema: { type: string }
+        - name: mode
+          in: query
+          schema: { type: integer, default: 0, enum: [0, 1] }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductsResponse' }
+        '400':
+          description: Suchtext fehlt
+  /ProductsInOrderHistory:
+    post:
+      tags: [Produkte]
+      summary: Bereits bestellte Artikel des Kunden
+      parameters:
+        - name: suchbegriff
+          in: query
+          schema: { type: string, default: '' }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductsResponse' }
+  /CategoryProducts:
+    post:
+      tags: [Produkte]
+      summary: Artikel einer Kategorie
+      parameters:
+        - name: id
+          in: query
+          description: Kategorie-Id, 0 = oberste Kategorie
+          schema: { type: integer, default: 0 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK (Anonymous Type im Code)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  products:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        Artikelnummer: { type: string }
+                        Artikelname: { type: string }
+                        Preis: { type: string }
+        '401':
+          description: Nicht autorisiert
+  /Order:
+    post:
+      tags: [Bestellungen]
+      summary: Bestellung aus uebergebenen Positionen erstellen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrderRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderResponse' }
+  /AddToCart:
+    post:
+      tags: [Warenkorb]
+      summary: Positionen in den Warenkorb legen (Vorbestellung)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrderRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderResponse' }
+  /ShippingMethod:
+    get:
+      tags: [Bestellungen]
+      summary: Versandarten des Kunden
+      parameters:
+        - name: Username
+          in: query
+          schema: { type: string }
+        - name: Password
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK (Anonymous Type im Code)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  Shippings:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        Caption: { type: string }
+                        id: { type: integer }
+                        name: { type: string }
+        '401':
+          description: Nicht autorisiert
+  /Payment:
+    get:
+      tags: [Bestellungen]
+      summary: Zahlungsarten des Kunden
+      parameters:
+        - name: Username
+          in: query
+          schema: { type: string }
+        - name: Password
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK (Anonymous Type im Code)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  payments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        Name: { type: string }
+                        NoPayment: { type: boolean }
+                        IsDefault: { type: boolean }
+                        Id: { type: integer }
+        '401':
+          description: Nicht autorisiert
+  /Countries:
+    post:
+      tags: [Sonstiges]
+      summary: Liste der Laender
+      security: []
+      responses:
+        '200':
+          description: OK (Anonymous Type im Code)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  countries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        iso: { type: string }
+                        name: { type: string }
+  /GetSettings:
+    post:
+      tags: [Kunde]
+      summary: Einstellungen des Kunden lesen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SettingsResponse' }
+  /SetSettings:
+    post:
+      tags: [Kunde]
+      summary: Einstellungen des Kunden setzen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SettingsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SettingsResponse' }
+  /AutoConfig:
+    post:
+      tags: [Auth]
+      summary: Automatische App-Konfiguration per Guid
+      security: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AutoConfigResponse' }
+  /Inquiry:
+    post:
+      tags: [Kunde]
+      summary: Anfrage erstellen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InquiryRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InquiryResponse' }
+  /InquiryPhoto:
+    post:
+      tags: [Kunde]
+      summary: Foto zu Anfrage (Platzhalter, TODO im Code)
+      security: []
+      parameters:
+        - name: id
+          in: query
+          schema: { type: string, default: '' }
+      responses:
+        '200':
+          description: Text OK
+          content:
+            text/plain:
+              schema: { type: string, example: OK }
+  /MakeContact:
+    post:
+      tags: [Kunde]
+      summary: Rueckrufwunsch/Kontaktanfrage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContactRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContactResponse' }
+  /MyBookmarks:
+    post:
+      tags: [Kunde]
+      summary: Merkliste des Kunden
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookmarksRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookmarksResponse' }
+  /SampleShoppingCarts:
+    post:
+      tags: [Warenkorb]
+      summary: Gespeicherte Musterwarenkoerbe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SampleCartRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SampleCartResponse' }
+  /Inventories:
+    post:
+      tags: [Kunde]
+      summary: Kundenlager abfragen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InventoryRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InventoryResponse' }
+  /OrderCustomerStock:
+    post:
+      tags: [Bestellungen]
+      summary: Kundenlager nachbestellen (noch nicht implementiert - TODO im Code)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerStockRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CustomerStockResponse' }
+  /Orders:
+    post:
+      tags: [Bestellungen]
+      summary: Bestellhistorie (Firmenadmin sieht alle Bestellungen der Firma)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrdersRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrdersResponse' }
+  /RegisterForNotifications:
+    post:
+      tags: [Kunde]
+      summary: Push-Token registrieren
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterResponse' }
+  /UnRegisterForNotifications:
+    post:
+      tags: [Kunde]
+      summary: Push-Token entfernen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterResponse' }
+  /ChangeCart:
+    post:
+      tags: [Warenkorb]
+      summary: Position im offenen Warenkorb hinzufuegen, aendern oder loeschen (Loeschen = Count 0)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeCartRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChangeCartResponse' }
+  /GetCurrentCart:
+    post:
+      tags: [Warenkorb]
+      summary: Aktuellen offenen Warenkorb abrufen und validieren
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GetCurrentCartResponse' }
+  /SyncOrder:
+    post:
+      tags: [Bestellungen]
+      summary: Offenen Warenkorb bestellen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrderRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderResponse' }
+  /SyncAddToCart:
+    post:
+      tags: [Warenkorb]
+      summary: Redirect-URL zum offenen Warenkorb liefern
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderResponse' }
+  /DeliveryAddresses:
+    post:
+      tags: [Kunde]
+      summary: Lieferadressen des Kunden (erste ist Standardadresse mit Id 0)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeliveryAddressesResponse' }
+        '400':
+          description: Fehler
+  /UploadMessageAttachment:
+    post:
+      tags: [Nachrichten]
+      summary: Anhang hochladen (jpg, png, gif, pdf)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                Username: { type: string }
+                Password: { type: string }
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: Hochgeladen (Anonymous Type im Code)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ImageUrl: { type: string }
+                  success: { type: boolean }
+        '400':
+          description: Datei fehlt, zu viele Dateien oder Endung nicht erlaubt
+        '500':
+          description: Fehler (Anonymous Type im Code)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  success: { type: boolean }
+  /SendMessage:
+    post:
+      tags: [Nachrichten]
+      summary: Nachricht senden
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema: { type: string }
+        - name: subject
+          in: query
+          required: true
+          schema: { type: string }
+        - name: body
+          in: query
+          required: true
+          schema: { type: string }
+        - name: cartId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: attachment
+          in: query
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '201':
+          description: Gesendet (Anonymous Type im Code)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+        '400':
+          description: Ungueltige Parameter
+        '500':
+          description: Fehler (Anonymous Type im Code)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  success: { type: boolean }
+  /ValidateCheckout:
+    post:
+      tags: [Bestellungen]
+      summary: Checkout validieren (Kostenstelle, Bestellreferenz, Verfuegbarkeit)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ValidateCheckoutRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ValidateCheckoutResponse' }
+  /CalculateCart:
+    post:
+      tags: [Warenkorb]
+      summary: Warenkorbwerte berechnen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CalculateCartRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CalculateCartResponse' }
+components:
+  securitySchemes:
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+  parameters:
+    Offset:
+      name: offset
+      in: query
+      schema: { type: integer, default: 0 }
+    Count:
+      name: count
+      in: query
+      schema: { type: integer, default: 2147483647 }
+  schemas:
+    ColorSizeTypes:
+      type: integer
+      enum: [0, 1, 2]
+      x-enum-varnames: [Text, Color, Dropdown]
+    AccountingTypes:
+      type: integer
+      enum: [0, 1]
+      x-enum-varnames: [Text, Dropdown]
+    StockStates:
+      type: integer
+      enum: [0, 1, 2, 3, 4]
+      x-enum-varnames: [NoInformationAvailable, NotVisible, OnStock, LowStock, NoStock]
+    LoginRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+    ButtonResponse:
+      type: object
+      properties:
+        Caption: { type: string }
+        Action: { type: string }
+    LoginResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        Customernr: { type: string }
+        Company: { type: string }
+        Firstname: { type: string }
+        Lastname: { type: string }
+        ERPCustomernr: { type: string }
+        IsAllowedUser: { type: boolean }
+        Token: { type: string }
+        LButton: { $ref: '#/components/schemas/ButtonResponse' }
+        RButton: { $ref: '#/components/schemas/ButtonResponse' }
+        Buttons:
+          type: array
+          items: { $ref: '#/components/schemas/ButtonResponse' }
+        BudgetItemPrice: { type: number, format: decimal }
+        BudgetOrderSum: { type: number, format: decimal }
+        BudgetPeriodeSum: { type: number, format: decimal }
+    ProductRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+        Id: { type: string }
+    ProductVariationResponse:
+      type: object
+      properties:
+        Stockno: { type: string }
+        Availability: { type: string }
+        Availability2: { type: string }
+        Color: { type: string }
+        Size: { type: string }
+    ProductResponseProduct:
+      type: object
+      properties:
+        AmountDefault: { type: integer, nullable: true }
+        AmountInterval: { type: integer, nullable: true }
+        AmountLocked: { type: boolean }
+        AmountMin: { type: integer }
+        AuxiliaryText1: { type: string }
+        AuxiliaryText2: { type: string }
+        Availability: { type: string }
+        Availability2: { type: string }
+        Brand: { type: string }
+        Bullet1: { type: string }
+        Bullet2: { type: string }
+        Bullet3: { type: string }
+        Bullet4: { type: string }
+        Bullet5: { type: string }
+        Bullets:
+          type: array
+          items: { type: string }
+        BuyerName: { type: string }
+        BuyerName1: { type: string }
+        BuyerName2: { type: string }
+        BuyerStockno: { type: string }
+        BuyerUnit: { type: string }
+        Color: { type: string }
+        ColorArray:
+          type: array
+          items: { type: string }
+        ColorName: { type: string }
+        ColorType: { $ref: '#/components/schemas/ColorSizeTypes' }
+        ComparePrice: { type: number }
+        ComparePriceUnit: { type: string }
+        ContainsDownloadable: { type: boolean }
+        Content: { type: number, nullable: true }
+        ContentUnit: { type: string }
+        CountryOfOrigin: { type: string }
+        Created: { type: string, format: date-time }
+        CustomsCode: { type: string }
+        Description: { type: string }
+        Description2: { type: string }
+        DetailImages:
+          type: array
+          items: { type: string }
+        Downloadable: { type: boolean }
+        EAN: { type: string }
+        Episode: { type: integer }
+        ListPrice: { type: number }
+        Locked: { type: boolean }
+        Manufacturer: { type: string }
+        Manufacturerno: { type: string }
+        Name1: { type: string }
+        Name2: { type: string }
+        OfferPrice: { type: number, nullable: true }
+        PreviewImage: { type: string }
+        Price: { type: number }
+        BulkPrices:
+          type: object
+          additionalProperties: { type: number }
+        PriceInfo:
+          type: array
+          items: { type: string }
+        ReleaseDate: { type: string, format: date-time }
+        Seller: { type: string }
+        Series: { type: string }
+        Size: { type: string }
+        SizeArray:
+          type: array
+          items: { type: string }
+        SizeName: { type: string }
+        SizeType: { $ref: '#/components/schemas/ColorSizeTypes' }
+        Specification: { type: string }
+        Stock: { type: integer }
+        StockStatus: { $ref: '#/components/schemas/StockStates' }
+        Stockno: { type: string }
+        Teaser: { type: string }
+        Unit: { type: string }
+        UnitPrice: { type: number }
+        Url: { type: string }
+        Vat: { type: number }
+        Parent: { type: string }
+        VariationsCount: { type: integer }
+        Variations:
+          type: array
+          items: { $ref: '#/components/schemas/ProductVariationResponse' }
+        Weight: { type: number }
+        NotAvailable: { type: boolean }
+        DiscontinuedItem: { type: boolean }
+        Successor: { type: string }
+    ExtendedProductResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        Netto: { type: boolean }
+        Product: { $ref: '#/components/schemas/ProductResponseProduct' }
+    ProductResponse:
+      type: object
+      properties:
+        Stockno: { type: string }
+        Name: { type: string }
+        Name1: { type: string }
+        Name2: { type: string }
+        ListPrice: { type: number }
+        Price: { type: number }
+        BulkPrices:
+          type: object
+          additionalProperties: { type: number }
+        EAN: { type: string }
+        PreviewImage: { type: string }
+        PreviewImageURL: { type: string }
+        DetailUrl: { type: string }
+        ManufacturerNo: { type: string }
+        BuyerStockno: { type: string }
+        Variant: { type: string }
+        VariantCount: { type: integer }
+        Availability: { type: string }
+        Availability2: { type: string }
+        FollowUpStockNo: { type: string }
+        HasFollowUp: { type: boolean, nullable: true }
+        MinVariantPrice: { type: number, nullable: true }
+        NotAvailable: { type: boolean, nullable: true }
+        LastOrderedOn: { type: string, format: date-time, nullable: true }
+        Unit: { type: string }
+        DiscontinuedItem: { type: boolean }
+        Size: { type: string }
+        SizeArray:
+          type: array
+          items: { type: string }
+        SizeName: { type: string }
+        SizeType: { $ref: '#/components/schemas/ColorSizeTypes' }
+        Color: { type: string }
+        ColorArray:
+          type: array
+          items: { type: string }
+        ColorName: { type: string }
+        ColorType: { $ref: '#/components/schemas/ColorSizeTypes' }
+        Variations:
+          type: array
+          items: { $ref: '#/components/schemas/ProductVariationResponse' }
+    ProductsResponse:
+      type: object
+      properties:
+        Products:
+          type: array
+          items: { $ref: '#/components/schemas/ProductResponse' }
+        AllItemsReceived: { type: boolean }
+        ItemCount: { type: integer }
+        Message: { type: string }
+        Success: { type: boolean }
+    OrderItemRequest:
+      type: object
+      properties:
+        Count: { type: integer }
+        Stockno: { type: string }
+        Color: { type: string }
+        Size: { type: string }
+        Variation: { type: string }
+        AccountNo: { type: string }
+    OrderAddressRequest:
+      type: object
+      properties:
+        Company: { type: string }
+        Address: { type: string }
+        Postalcode: { type: string }
+        City: { type: string }
+        Country: { type: string }
+        Firstname: { type: string }
+        Lastname: { type: string }
+    OrderRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+        Items:
+          type: array
+          items: { $ref: '#/components/schemas/OrderItemRequest' }
+        Orderreference: { type: string }
+        Note: { type: string }
+        AccountNo: { type: string }
+        InvoiceAddress: { $ref: '#/components/schemas/OrderAddressRequest' }
+        DeliveryAddress: { $ref: '#/components/schemas/OrderAddressRequest' }
+    OrderResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        RedirectUrl: { type: string }
+        Id: { type: string }
+    SettingsRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+        Netto: { type: boolean }
+    SettingsResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        Netto: { type: boolean }
+    AutoConfigResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        BaseUrl: { type: string }
+        Username: { type: string }
+        Token: { type: string }
+    InquiryItem:
+      type: object
+      properties:
+        Count: { type: integer }
+        Stockno: { type: string }
+    InquiryRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+        customernr: { type: string }
+        Note: { type: string }
+        Firma: { type: string }
+        Anrede: { type: string }
+        Titel: { type: string }
+        Vorname: { type: string }
+        Nachname: { type: string }
+        Adresse: { type: string }
+        PLZ: { type: string }
+        Ort: { type: string }
+        Land: { type: string }
+        Email: { type: string }
+        Items:
+          type: array
+          items: { $ref: '#/components/schemas/InquiryItem' }
+    InquiryResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        Id: { type: string }
+    ContactRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+    ContactResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+    Bookmarks:
+      type: object
+      properties:
+        Stockno: { type: string }
+        Name: { type: string }
+        Name1: { type: string }
+        Name2: { type: string }
+        Price: { type: number }
+        BulkPrices:
+          type: object
+          additionalProperties: { type: number }
+        Image: { type: string }
+        Colors: { type: string }
+        ColorArray:
+          type: array
+          items: { type: string }
+        ColorName: { type: string }
+        ColorType: { $ref: '#/components/schemas/ColorSizeTypes' }
+        Sizes: { type: string }
+        SizeArray:
+          type: array
+          items: { type: string }
+        SizeName: { type: string }
+        SizeType: { $ref: '#/components/schemas/ColorSizeTypes' }
+        Variations:
+          type: array
+          items: { $ref: '#/components/schemas/ProductVariationResponse' }
+        Availability: { type: string }
+        Availability2: { type: string }
+        DiscontinuedItem: { type: boolean }
+    BookmarksRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+    BookmarksResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        Id: { type: string }
+        Items:
+          type: array
+          items: { $ref: '#/components/schemas/Bookmarks' }
+    SampleCartDetail:
+      type: object
+      properties:
+        Count: { type: integer }
+        Stockno: { type: string }
+        Name: { type: string }
+        Name1: { type: string }
+        Name2: { type: string }
+        Price: { type: number }
+        BulkPrices:
+          type: object
+          additionalProperties: { type: number }
+        Image: { type: string }
+        Colors: { type: string }
+        ColorArray:
+          type: array
+          items: { type: string }
+        ColorName: { type: string }
+        ColorType: { $ref: '#/components/schemas/ColorSizeTypes' }
+        Sizes: { type: string }
+        SizeArray:
+          type: array
+          items: { type: string }
+        SizeName: { type: string }
+        SizeType: { $ref: '#/components/schemas/ColorSizeTypes' }
+        Variations:
+          type: array
+          items: { $ref: '#/components/schemas/ProductVariationResponse' }
+        Availability: { type: string }
+        Availability2: { type: string }
+        DiscontinuedItem: { type: boolean }
+    SampleCarts:
+      type: object
+      properties:
+        Name: { type: string }
+        Items:
+          type: array
+          items: { $ref: '#/components/schemas/SampleCartDetail' }
+    SampleCartRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+    SampleCartResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        Id: { type: string }
+        Carts:
+          type: array
+          items: { $ref: '#/components/schemas/SampleCarts' }
+    Inventory:
+      type: object
+      properties:
+        Id: { type: string }
+        Name: { type: string }
+    InventoryRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+    InventoryResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        Id: { type: string }
+        Inventories:
+          type: array
+          items: { $ref: '#/components/schemas/Inventory' }
+    CustomerStockRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+        Id: { type: string }
+    CustomerStockResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        Inventory: { $ref: '#/components/schemas/Inventory' }
+    OrderStatusDetail:
+      type: object
+      properties:
+        Count: { type: integer }
+        ConfirmedCount: { type: integer, nullable: true }
+        Stockno: { type: string }
+        Name1: { type: string }
+        Name2: { type: string }
+        UnitPrice: { type: number }
+        Total: { type: number }
+        ImageUrl: { type: string }
+        Ean: { type: string }
+        FollowUpStockNo: { type: string }
+        HasFollowUp: { type: boolean, nullable: true }
+        NotAvailable: { type: boolean, nullable: true }
+    DeliveryItem:
+      type: object
+      properties:
+        Name: { type: string }
+        Count: { type: integer }
+        ConfirmedCount: { type: integer, nullable: true }
+        StockNo: { type: string }
+        Price: { type: number }
+        ImageUrl: { type: string }
+    DeliveryStatus:
+      type: object
+      properties:
+        Status: { type: string }
+        TrackingID: { type: string }
+        TrackingURL: { type: string }
+        DeliveryDate: { type: string, format: date-time }
+        DeliveryNr: { type: string }
+        Items:
+          type: array
+          items: { $ref: '#/components/schemas/DeliveryItem' }
+    OrdersStatus:
+      type: object
+      properties:
+        Id: { type: string }
+        Orderno: { type: string }
+        ERPOrderno: { type: string }
+        OrderDate: { type: string, format: date-time }
+        Orderreference: { type: string }
+        Status: { type: string }
+        TrackingID: { type: string }
+        TrackingURL: { type: string }
+        Deliveries:
+          type: array
+          items: { $ref: '#/components/schemas/DeliveryStatus' }
+        Firstname: { type: string }
+        Lastname: { type: string }
+        Items:
+          type: array
+          items: { $ref: '#/components/schemas/OrderStatusDetail' }
+        DeliveryDate: { type: string, format: date-time, nullable: true }
+        DeliveryAddress: { type: string }
+        DeliveryCity: { type: string }
+        DeliveryPostal: { type: string }
+    OrdersRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+    OrdersResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        Orders:
+          type: array
+          items: { $ref: '#/components/schemas/OrdersStatus' }
+    RegisterRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+        Token: { type: string }
+        DeviceModel: { type: string }
+    RegisterResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+    ChangeCartRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+        PositionId: { type: integer, default: -1 }
+        Count: { type: integer }
+        Stockno: { type: string }
+        AccountNo: { type: string }
+    ChangeCartResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        PositionId: { type: integer }
+    GetCurrentCartItem:
+      type: object
+      properties:
+        PositionId: { type: integer }
+        Count: { type: integer }
+        Stockno: { type: string }
+        Name: { type: string }
+        Price: { type: number }
+        Availability: { type: string }
+        Availability2: { type: string }
+        ImageUrl: { type: string }
+        DetailUrl: { type: string }
+        Ean: { type: string }
+        AccountNo: { type: string }
+        BulkPrices:
+          type: object
+          additionalProperties: { type: number }
+        DiscontinuedItem: { type: boolean }
+    GetCurrentCartResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        Items:
+          type: array
+          items: { $ref: '#/components/schemas/GetCurrentCartItem' }
+        RemovedItems:
+          type: array
+          items: { $ref: '#/components/schemas/GetCurrentCartItem' }
+    DeliveryAddress:
+      type: object
+      properties:
+        Id: { type: integer }
+        Street: { type: string }
+        City: { type: string }
+        PLZ: { type: string }
+        Country: { type: string }
+        Company: { type: string }
+        CompanyUnit: { type: string }
+        Firstname: { type: string }
+        Lastname: { type: string }
+        Default: { type: boolean }
+    DeliveryAddressesResponse:
+      type: object
+      properties:
+        Addresses:
+          type: array
+          items: { $ref: '#/components/schemas/DeliveryAddress' }
+    ValidateCheckoutRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+        Items:
+          type: array
+          items:
+            type: object
+            properties:
+              Count: { type: integer }
+              Stockno: { type: string }
+    ValidateCheckoutResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        IsAccountingNeeded: { type: boolean }
+        IsOrderreferenceNeeded: { type: boolean }
+        RecommendedOrderreference: { type: string }
+        AccountingType: { $ref: '#/components/schemas/AccountingTypes' }
+        Accounts:
+          type: array
+          items: { type: string }
+        Items:
+          type: array
+          items:
+            type: object
+            properties:
+              Count: { type: integer }
+              Stockno: { type: string }
+              AvailableCount: { type: integer }
+              Availability: { type: string }
+              Availability2: { type: string }
+    CalculateCartRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password: { type: string }
+        DeliveryId: { type: integer, nullable: true }
+        Items:
+          type: array
+          items:
+            type: object
+            properties:
+              Count: { type: integer }
+              Stockno: { type: string }
+    CalculateCartResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
+        Discount: { type: number }
+        Total: { type: number }
+        LowQuantitySurcharge: { type: number }
+        ShippingCosts: { type: number }
+        VatAmount: { type: number }
+        GrossAmount: { type: number }
