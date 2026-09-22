@@ -24,10 +24,37 @@ tags:
   - name: Produkte
   - name: Warenkorb
   - name: Bestellungen
+  - name: Performance
   - name: Kunde
   - name: Nachrichten
   - name: Sonstiges
 paths:
+  /SendOffer:
+    post:
+      tags: [Kunde]
+      summary: Angebot abschicken (legt Kunde/Inquiry an, loest Workflow aus)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SendOfferRequest' }
+      responses:
+        '200':
+          description: OK (Success=false bei Login-Fehler oder Exception)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SendOfferResponse' }
+  /:
+    get:
+      tags: [Sonstiges]
+      summary: API-Version
+      responses:
+        '200':
+          description: Aktuelle Version der API als String
+          content:
+            text/plain:
+              schema: { type: string, example: "5.74" }
   /Login:
     post:
       tags: [Auth]
@@ -293,6 +320,66 @@ paths:
                         Id: { type: integer }
         '401':
           description: Nicht autorisiert
+  /LastUpdate:
+    get:
+      tags: [Performance]
+      summary: Zeitpunkt der letzten Cache-Aktualisierung
+      responses:
+        '200':
+          description: Datum als String, "null" falls noch nie aktualisiert, oder "no cache" falls kein Cache vorhanden ist
+          content:
+            text/plain:
+              schema: { type: string }
+  /LastUpdateDuration:
+    get:
+      tags: [Performance]
+      summary: Dauer der letzten Cache-Aktualisierung
+      responses:
+        '200':
+          description: Dauer als String, "null" falls nicht vorhanden, oder "no cache" falls kein Cache vorhanden ist
+          content:
+            text/plain:
+              schema: { type: string }
+  /IsUpdating:
+    get:
+      tags: [Performance]
+      summary: Gibt an, ob der Cache aktuell aktualisiert wird
+      responses:
+        '200':
+          description: "'true' oder 'false', oder 'no cache' falls kein Cache vorhanden ist"
+          content:
+            text/plain:
+              schema: { type: string }
+  /ProductAccessCount:
+    get:
+      tags: [Performance]
+      summary: Anzahl der Zugriffe auf Produkte seit dem letzten Cache-Update
+      responses:
+        '200':
+          description: Zaehlerwert als String, oder "no cache" falls kein Cache vorhanden ist
+          content:
+            text/plain:
+              schema: { type: string }
+  /CategoryAccessCount:
+    get:
+      tags: [Performance]
+      summary: Anzahl der Zugriffe auf Kategorien seit dem letzten Cache-Update
+      responses:
+        '200':
+          description: Zaehlerwert als String, oder "no cache" falls kein Cache vorhanden ist
+          content:
+            text/plain:
+              schema: { type: string }
+  /PageAccessCount:
+    get:
+      tags: [Performance]
+      summary: Anzahl der Zugriffe auf Seiten seit dem letzten Cache-Update
+      responses:
+        '200':
+          description: Zaehlerwert als String, oder "no cache" falls kein Cache vorhanden ist
+          content:
+            text/plain:
+              schema: { type: string }
   /Countries:
     post:
       tags: [Sonstiges]
@@ -757,6 +844,35 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ConfirmOrderedCartResponse' }
+  /Ping:
+    get:
+      tags: [Sonstiges]
+      summary: Verfuegbarkeitscheck
+      security: []
+      responses:
+        '200':
+          description: Immer "OK"
+          content:
+            text/plain:
+              schema: { type: string, example: OK }
+  /Log:
+    get:
+      tags: [Sonstiges]
+      summary: Log-Eintrag schreiben
+      security: []
+      parameters:
+        - name: logtype
+          in: query
+          schema: { type: string, default: INFO }
+        - name: message
+          in: query
+          schema: { type: string, default: Ping }
+      responses:
+        '200':
+          description: Immer "OK"
+          content:
+            text/plain:
+              schema: { type: string, example: OK }
 components:
   parameters:
     Offset:
@@ -774,6 +890,38 @@ components:
       description: Optional. App-Token als Alternative zum Passwort. Username bleibt Pflicht im Body.
       schema: { type: string }
   schemas:
+    OfferItem:
+      type: object
+      properties:
+        ItemNr: { type: string }
+        Amount: { type: integer }
+        Price: { type: number }
+        name: { type: string }
+    SendOfferRequest:
+      type: object
+      properties:
+        Username: { type: string }
+        Password:
+          type: string
+          description: Passwort oder Token
+        Email: { type: string }
+        Company: { type: string }
+        Salutation: { type: string }
+        Title: { type: string }
+        Vorname: { type: string }
+        Nachname: { type: string }
+        Adresse: { type: string }
+        PLZ: { type: string }
+        Ort: { type: string }
+        Land: { type: string }
+        Items:
+          type: array
+          items: { $ref: '#/components/schemas/OfferItem' }
+    SendOfferResponse:
+      type: object
+      properties:
+        Success: { type: boolean }
+        Message: { type: string }
     ColorSizeTypes:
       type: integer
       enum: [0, 1, 2]
